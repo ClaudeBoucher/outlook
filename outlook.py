@@ -97,7 +97,7 @@ class Outlook():
 
     def allIdsSince(self, days):
         r, d = self.imap.search(None, '(SINCE "'+self.since_date(days)+'")', 'ALL')
-        list = d[0].split(' ')
+        list = d[0].split()
         return list
 
     def allIdsToday(self):
@@ -105,7 +105,7 @@ class Outlook():
 
     def readIdsSince(self, days):
         r, d = self.imap.search(None, '(SINCE "'+self.date_since(days)+'")', 'SEEN')
-        list = d[0].split(' ')
+        list = d[0].split()
         return list
 
     def readIdsToday(self):
@@ -113,7 +113,7 @@ class Outlook():
 
     def unreadIdsSince(self, days):
         r, d = self.imap.search(None, '(SINCE "'+self.since_date(days)+'")', 'UNSEEN')
-        list = d[0].split(' ')
+        list = d[0].split()
         return list
 
     def unreadIdsToday(self):
@@ -121,17 +121,17 @@ class Outlook():
 
     def allIds(self):
         r, d = self.imap.search(None, "ALL")
-        list = d[0].split(' ')
+        list = d[0].split()
         return list
 
     def readIds(self):
         r, d = self.imap.search(None, "SEEN")
-        list = d[0].split(' ')
+        list = d[0].split()
         return list
 
     def unreadIds(self):
         r, d = self.imap.search(None, "UNSEEN")
-        list = d[0].split(' ')
+        list = d[0].split()
         return list
 
     def hasUnread(self):
@@ -149,13 +149,22 @@ class Outlook():
     def getEmail(self, id):
         r, d = self.imap.fetch(id, "(RFC822)")
         self.raw_email = d[0][1]
+        
+        if isinstance(self.raw_email, bytes):
+            self.raw_email = self.raw_email.decode('utf-8')
+        
         self.email_message = email.message_from_string(self.raw_email)
         return self.email_message
 
+
     def unread(self):
-        list = self.unreadIds()
-        latest_id = list[-1]
-        return self.getEmail(latest_id)
+        unread_ids = self.unreadIds()
+        if unread_ids:
+            latest_id = unread_ids[-1]
+            return self.getEmail(latest_id)
+        else:
+            return None
+
 
     def read(self):
         list = self.readIds()
@@ -185,20 +194,21 @@ class Outlook():
         self.raw_email = d[0][1]
         return self.raw_email
 
-    def mailbody(self):
-        if self.email_message.is_multipart():
-            for payload in self.email_message.get_payload():
-                # if payload.is_multipart(): ...
+    def mailbody(self, email_message):
+        if email_message.is_multipart():
+            for payload in email_message.get_payload():
+                payload_str = str(payload)
+
                 body = (
-                    payload.get_payload()
-                    .split(self.email_message['from'])[0]
+                    payload_str.split(email_message['From'])[0]
                     .split('\r\n\r\n2015')[0]
                 )
                 return body
         else:
+            payload_str = str(email_message.get_payload())
+
             body = (
-                self.email_message.get_payload()
-                .split(self.email_message['from'])[0]
+                payload_str.split(email_message['From'])[0]
                 .split('\r\n\r\n2015')[0]
             )
             return body
