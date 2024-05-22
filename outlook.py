@@ -236,3 +236,40 @@ class Outlook():
 
     def mailbodydecoded(self):
         return base64.urlsafe_b64decode(self.mailbody())
+
+
+    def get_last_email_from(self, sender_email):
+        # Search for emails from the specified sender
+        status, search_data = self.mail.search(None, f'FROM "{sender_email}"')
+        email_ids = search_data[0].split()
+        
+        if not email_ids:
+            return None  # No emails from the specified sender
+
+        # Fetch the latest email (the last one in the list)
+        latest_email_id = email_ids[-1]
+        status, fetch_data = self.mail.fetch(latest_email_id, "(RFC822)")
+        raw_email = fetch_data[0][1]
+        email_message = email.message_from_bytes(raw_email)
+
+        # Extract the email details
+        email_details = {
+            "subject": email_message["subject"],
+            "from": email_message["from"],
+            "to": email_message["to"],
+            "date": email_message["date"],
+            "body": self.get_email_body(email_message)
+        }
+
+        return email_details
+
+    def get_email_body(self, email_message):
+        if email_message.is_multipart():
+            for part in email_message.walk():
+                if part.get_content_type() == "text/plain":
+                    return part.get_payload(decode=True).decode("utf-8")
+        else:
+            return email_message.get_payload(decode=True).decode("utf-8")
+
+        return ""
+
